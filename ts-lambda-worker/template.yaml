@@ -1,0 +1,105 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Temporal Lambda Worker (TypeScript)
+
+Globals:
+  Function:
+    Timeout: 60
+    MemorySize: 256
+    Runtime: nodejs22.x
+    Architectures: [x86_64]
+
+Parameters:
+  TemporalAddress:
+    Type: String
+    Default: localhost:7233
+    Description: Temporal server address (host:port). For Temporal Cloud use <namespace>.tmprl.cloud:7233
+  TemporalNamespace:
+    Type: String
+    Default: default
+  TemporalTaskQueue:
+    Type: String
+    Default: lambda-worker-
+  AssumeRoleExternalId:
+    Type: String
+    Description: External ID provided by Temporal Cloud (from the Cloud UI when registering a serverless worker)
+    AllowedPattern: "[a-zA-Z0-9_+=,.@-]*"
+    MinLength: 5
+    MaxLength: 45
+  LocalDevIamArn:
+    Type: String
+    Default: ""
+    Description: IAM user or role ARN allowed to assume the invoke role for local dev (e.g. arn:aws:iam::123456789012:user/andy)
+
+Conditions:
+  HasLocalDevIamArn: !Not [!Equals [!Ref LocalDevIamArn, ""]]
+
+Resources:
+  WorkerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handler.handler
+      CodeUri: .
+      Description: Temporal worker running on Lambda
+      Environment:
+        Variables:
+          TEMPORAL_ADDRESS: !Ref TemporalAddress
+          TEMPORAL_NAMESPACE: !Ref TemporalNamespace
+          TEMPORAL_TASK_QUEUE: !Ref TemporalTaskQueue
+    Metadata:
+      BuildMethod: makefile
+
+  TemporalCloudInvokeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: Role Temporal Cloud assumes to invoke this Lambda worker
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS:
+                - arn:aws:iam::902542641901:role/wci-lambda-invoke
+                - arn:aws:iam::160190466495:role/wci-lambda-invoke
+                - arn:aws:iam::819232936619:role/wci-lambda-invoke
+                - arn:aws:iam::829909441867:role/wci-lambda-invoke
+                - arn:aws:iam::354116250941:role/wci-lambda-invoke
+                # maybe these for staging / test?
+                # arn:aws:iam::031568301006:role/wci-lambda-invoke,
+                # arn:aws:iam::815250390068:role/wci-lambda-invoke
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                "sts:ExternalId": !Ref AssumeRoleExternalId
+          - !If
+            - HasLocalDevIamArn
+            - Effect: Allow
+              Principal:
+                AWS: !Ref LocalDevIamArn
+              Action: sts:AssumeRole
+            - !Ref AWS::NoValue
+
+  TemporalCloudInvokePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: TemporalCloudLambdaInvokePermissions
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - lambda:InvokeFunction
+              - lambda:GetFunction
+            Resource: !GetAtt WorkerFunction.Arn
+      Roles:
+        - !Ref TemporalCloudInvokeRole
+
+Outputs:
+  WorkerFunctionArn:
+    Description: Lambda function ARN
+    Value: !GetAtt WorkerFunction.Arn
+
+  TemporalCloudInvokeRoleArn:
+    Description: IAM role ARN to supply to Temporal Cloud when registering the serverless worker deployment
+    Value: !GetAtt TemporalCloudInvokeRole.Arn

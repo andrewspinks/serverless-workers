@@ -1,0 +1,4 @@
+dist/
+.aws-sam/
+node_modules/
+samconfig.toml

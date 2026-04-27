@@ -1,0 +1,38 @@
+# NOTE: @temporalio/lambda-worker is not yet on npm (merged to main, pending next SDK release).
+# Install will fail until published. Pin all @temporalio/* packages to the same version when released.
+
+# Install dependencies
+install:
+    pnpm install
+
+# Build: bundle workflows + compile handler (produces dist/)
+build:
+    pnpm run build
+
+# SAM build (runs Makefile target, populates .aws-sam/build/)
+
+# --build-in-source keeps the build in the project dir so link: paths resolve correctly
+sam-build:
+    sam build --build-in-source
+
+# Deploy to AWS (interactive first run; writes samconfig.toml)
+
+# Supply AssumeRoleExternalId from the Temporal Cloud UI
+deploy:
+    sam deploy --guided --build-in-source --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM --profile support-sandbox-1/AWSAdministratorAccess
+
+# Invoke the Lambda locally against a running Temporal dev server
+
+# SAM local runs inside Docker — host.docker.internal routes to your machine
+invoke:
+    sam local invoke WorkerFunction \
+        --event events/invoke.json \
+        --env-vars events/local-env.json
+
+# Tail CloudWatch logs after a real deployment
+logs stack="ts-lambda-worker":
+    sam logs --name WorkerFunction --stack-name {{ stack }} --tail
+
+# Start a workflow against a local Temporal dev server (for testing)
+start-workflow:
+    ts-node src/client.ts

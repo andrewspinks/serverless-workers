@@ -1,0 +1,17 @@
+limit.maxIDLength:
+  - value: 255
+    constraints: {}
+system.forceSearchAttributesCacheRefreshOnRead:
+  - value: true # Dev setup only — do not enable in production
+    constraints: {}
+
+workercontroller.enabled:
+  - value: true
+
+workercontroller.compute_providers.enabled:
+  - value:
+      - aws-lambda
+
+workercontroller.scaling_algorithms.enabled:
+  - value:
+      - no-sync
