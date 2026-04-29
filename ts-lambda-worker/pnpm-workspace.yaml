@@ -1,2 +1,2 @@
 overrides:
-  '@temporalio/lambda-worker': link:../../../src/temporal-sdk/sdk-typescript/packages/lambda-worker
+  "@temporalio/lambda-worker": link:../../src/temporal-sdk/sdk-typescript/packages/lambda-worker

@@ -4,11 +4,12 @@
   "private": true,
   "scripts": {
     "build:bundle": "ts-node src/build-bundle.ts",
-    "build:handler": "esbuild src/handler.ts --bundle --platform=node --target=node22 --outfile=dist/handler.js --external:./workflow-bundle.js --external:@swc/core --external:@swc/wasm --external:'*.node'",
+    "build:handler": "esbuild src/handler.ts --bundle --platform=node --target=node22 --outfile=dist/handler.js --external:@swc/core --external:@swc/wasm --external:'*.node' && node scripts/patch-bundle.mjs",
     "build": "pnpm run build:bundle && pnpm run build:handler",
     "client": "ts-node src/client.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-secrets-manager": "^3.0.0",
     "@temporalio/activity": "^1.16.0",
     "@temporalio/client": "^1.16.0",
     "@temporalio/envconfig": "^1.16.0",

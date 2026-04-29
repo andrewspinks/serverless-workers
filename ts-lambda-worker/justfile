@@ -19,7 +19,7 @@ sam-build:
 
 # Supply AssumeRoleExternalId from the Temporal Cloud UI
 deploy:
-    sam deploy --guided --build-in-source --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM --profile support-sandbox-1/AWSAdministratorAccess
+    sam deploy --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM --config-env sa-demo #--profile support-sandbox-1/AWSAdministratorAccess
 
 # Invoke the Lambda locally against a running Temporal dev server
 
