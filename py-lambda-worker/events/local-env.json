@@ -1,0 +1,7 @@
+{
+  "WorkerFunction": {
+    "TEMPORAL_ADDRESS": "host.docker.internal:7233",
+    "TEMPORAL_NAMESPACE": "default",
+    "TEMPORAL_TASK_QUEUE": "lambda-worker-queue"
+  }
+}

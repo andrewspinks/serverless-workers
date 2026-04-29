@@ -1,0 +1,31 @@
+# Install dependencies
+install:
+    uv sync
+
+# No bundle step needed for Python (no V8 isolate sandbox)
+build:
+    @echo "No build step required for Python workers"
+
+# SAM build (runs Makefile target, populates .aws-sam/build/)
+sam-build:
+    sam build
+
+# Deploy to AWS (interactive first run; writes samconfig.toml)
+# Supply AssumeRoleExternalId from the Temporal Cloud UI
+deploy:
+    sam deploy --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM --config-env sa-demo
+
+# Invoke the Lambda locally against a running Temporal dev server
+# SAM local runs inside Docker — host.docker.internal routes to your machine
+invoke:
+    sam local invoke WorkerFunction \
+        --event events/invoke.json \
+        --env-vars events/local-env.json
+
+# Tail CloudWatch logs after a real deployment
+logs stack="py-lambda-worker":
+    sam logs --name WorkerFunction --stack-name {{ stack }} --tail --config-env sa-demo
+
+# Start a workflow against a local Temporal dev server (for testing)
+start-workflow:
+    uv run python -m app.client

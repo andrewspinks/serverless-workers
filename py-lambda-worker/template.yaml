@@ -1,0 +1,121 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Temporal Lambda Worker (Python)
+
+Globals:
+  Function:
+    Timeout: 60
+    MemorySize: 256
+    Runtime: python3.12
+    Architectures: [arm64]
+
+Parameters:
+  TemporalAddress:
+    Type: String
+    Default: localhost:7233
+    Description: Temporal server address (host:port). For Temporal Cloud use <namespace>.tmprl.cloud:7233
+  TemporalNamespace:
+    Type: String
+    Default: default
+  TemporalTaskQueue:
+    Type: String
+    Default: lambda-worker-
+  TemporalTLSCertArn:
+    Type: String
+    Default: ""
+    Description: Secrets Manager ARN for the mTLS client certificate (PEM). Leave empty for non-TLS environments.
+  TemporalTLSKeyArn:
+    Type: String
+    Default: ""
+    Description: Secrets Manager ARN for the mTLS client private key (PEM). Leave empty for non-TLS environments.
+  AssumeRoleExternalId:
+    Type: String
+    Description: External ID provided by Temporal Cloud (from the Cloud UI when registering a serverless worker)
+    AllowedPattern: "[a-zA-Z0-9_+=,.@-]*"
+    MinLength: 5
+    MaxLength: 45
+
+Conditions:
+  HasTLSCerts: !And
+    - !Not [!Equals [!Ref TemporalTLSCertArn, ""]]
+    - !Not [!Equals [!Ref TemporalTLSKeyArn, ""]]
+
+Resources:
+  WorkerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: app.handler.lambda_handler
+      CodeUri: .
+      Description: Temporal worker running on Lambda
+      Environment:
+        Variables:
+          TEMPORAL_ADDRESS: !Ref TemporalAddress
+          TEMPORAL_NAMESPACE: !Ref TemporalNamespace
+          TEMPORAL_TASK_QUEUE: !Ref TemporalTaskQueue
+          TEMPORAL_TLS_CERT_ARN: !Ref TemporalTLSCertArn
+          TEMPORAL_TLS_KEY_ARN: !Ref TemporalTLSKeyArn
+    Metadata:
+      BuildMethod: makefile
+
+  TemporalCloudInvokeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: Role Temporal Cloud assumes to invoke this Lambda worker
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS:
+                # - arn:aws:iam::902542641901:role/wci-lambda-invoke
+                # - arn:aws:iam::160190466495:role/wci-lambda-invoke
+                # - arn:aws:iam::819232936619:role/wci-lambda-invoke
+                # - arn:aws:iam::829909441867:role/wci-lambda-invoke
+                # - arn:aws:iam::354116250941:role/wci-lambda-invoke
+                # staging accounts
+                - arn:aws:iam::031568301006:role/wci-lambda-invoke
+                - arn:aws:iam::815250390068:role/wci-lambda-invoke
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                "sts:ExternalId": !Ref AssumeRoleExternalId
+
+  TLSSecretsPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Condition: HasTLSCerts
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: secretsmanager:GetSecretValue
+            Resource:
+              - !Ref TemporalTLSCertArn
+              - !Ref TemporalTLSKeyArn
+      Roles:
+        - !Ref WorkerFunctionRole
+
+  TemporalCloudInvokePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: TemporalCloudLambdaInvokePermissions
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - lambda:InvokeFunction
+              - lambda:GetFunction
+            Resource: !GetAtt WorkerFunction.Arn
+      Roles:
+        - !Ref TemporalCloudInvokeRole
+
+Outputs:
+  WorkerFunctionArn:
+    Description: Lambda function ARN
+    Value: !GetAtt WorkerFunction.Arn
+
+  TemporalCloudInvokeRoleArn:
+    Description: IAM role ARN to supply to Temporal Cloud when registering the serverless worker deployment
+    Value: !GetAtt TemporalCloudInvokeRole.Arn
