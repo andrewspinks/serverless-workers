@@ -26,6 +26,10 @@ invoke:
 logs stack="py-lambda-worker":
     sam logs --name WorkerFunction --stack-name {{ stack }} --tail --config-env sa-demo
 
+# Run a local worker against a Temporal dev server (for local development)
+run-worker:
+    uv run python -m app.worker
+
 # Start a workflow against a local Temporal dev server (for testing)
 start-workflow:
     uv run python -m app.client

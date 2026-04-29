@@ -15,7 +15,21 @@ sam deploy --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM
 ```sh
 cd py-lambda-worker
 sam build
-sam deploy --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM 
+sam deploy \
+    --stack-name py-lambda-worker \
+    --resolve-s3 \
+    --s3-prefix py-lambda-worker \
+    --profile SolutionsArchitecture/AWSAdministratorAccess \
+    --confirm-changeset \
+    --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
+    --region us-east-2 \
+    --parameter-overrides \
+      TemporalAddress="sa-demo-01.temporal-dev.tmprl-test.cloud:7233" \
+      TemporalNamespace="sa-demo-01.temporal-dev" \
+      TemporalTaskQueue="py-lambda-worker-queue" \
+      TemporalTLSCertArn="arn:aws:secretsmanager:us-east-2:429214323166:secret:temporal/serverless/client-cert-SFwM47" \
+      TemporalTLSKeyArn="arn:aws:secretsmanager:us-east-2:429214323166:secret:temporal/serverless/client-key-dTlDRy" \
+      AssumeRoleExternalId="python-external-id"
 ```
 
 After deploying, note the outputs from `sam deploy`:
