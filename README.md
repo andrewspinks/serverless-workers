@@ -1,7 +1,7 @@
 # Serverless AWS Lambda workers
 
 ## TypeScript worker
-NB: this requires is using a locally built version of the typescript-sdk. It deploys successfully, but is getting runtime errors. Probably due to how I'm packaging it up.
+NB: this requires a locally built version of the typescript-sdk. It deploys successfully, but is getting runtime errors. Probably due to how I'm packaging it up.
 
 ```sh
 cd ts-lambda-worker
