@@ -20,6 +20,18 @@ Parameters:
   TemporalTaskQueue:
     Type: String
     Default: lambda-worker-
+  TemporalDeploymentName:
+    Type: String
+    Default: py-lambda-worker
+    Description: Temporal worker deployment name (groups versions together)
+  BuildId:
+    Type: String
+    Default: "v1.0"
+    Description: >
+      Temporal deployment build ID. Bump this (along with code changes) when deploying
+      a new version that should receive new workflow executions. Old pinned workflows
+      continue running on the Lambda version registered for their build ID.
+    AllowedPattern: "[a-zA-Z0-9._-]+"
   TemporalTLSCertArn:
     Type: String
     Default: ""
@@ -47,11 +59,17 @@ Resources:
       Handler: app.handler.lambda_handler
       CodeUri: .
       Description: Temporal worker running on Lambda
+      # AutoPublishAlias publishes an immutable Lambda version on each code/config change
+      # and keeps the "current" alias pointing to it. The versioned ARN is what gets
+      # registered with Temporal so each build_id maps to a pinned Lambda snapshot.
+      AutoPublishAlias: current
       Environment:
         Variables:
           TEMPORAL_ADDRESS: !Ref TemporalAddress
           TEMPORAL_NAMESPACE: !Ref TemporalNamespace
           TEMPORAL_TASK_QUEUE: !Ref TemporalTaskQueue
+          TEMPORAL_DEPLOYMENT_NAME: !Ref TemporalDeploymentName
+          TEMPORAL_BUILD_ID: !Ref BuildId
           TEMPORAL_TLS_CERT_ARN: !Ref TemporalTLSCertArn
           TEMPORAL_TLS_KEY_ARN: !Ref TemporalTLSKeyArn
     Metadata:
@@ -107,14 +125,32 @@ Resources:
             Action:
               - lambda:InvokeFunction
               - lambda:GetFunction
-            Resource: !GetAtt WorkerFunction.Arn
+            Resource:
+              - !GetAtt WorkerFunction.Arn          # $LATEST
+              - !Sub "${WorkerFunction.Arn}:*"      # all versions and aliases
       Roles:
         - !Ref TemporalCloudInvokeRole
 
 Outputs:
   WorkerFunctionArn:
-    Description: Lambda function ARN
+    Description: Lambda function base ARN
     Value: !GetAtt WorkerFunction.Arn
+
+  WorkerFunctionVersionArn:
+    Description: >
+      Immutable ARN for this deployed Lambda version. Register this with Temporal Cloud
+      via `temporal worker deployment create-version --aws-lambda-function-arn <this value>`.
+      Each build_id should map to a distinct version ARN so Temporal can pin old workflows
+      to old code while routing new workflows to new code.
+    Value: !Ref WorkerFunction.Version
+
+  WorkerFunctionAliasArn:
+    Description: Alias ARN (always points to the currently deployed version)
+    Value: !Ref WorkerFunction.Alias
+
+  BuildId:
+    Description: Temporal deployment build ID deployed in this stack
+    Value: !Ref BuildId
 
   TemporalCloudInvokeRoleArn:
     Description: IAM role ARN to supply to Temporal Cloud when registering the serverless worker deployment

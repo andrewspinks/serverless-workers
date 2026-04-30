@@ -11,7 +11,7 @@ sam-build:
     sam build
 
 # Deploy to AWS (interactive first run; writes samconfig.toml)
-# Supply AssumeRoleExternalId from the Temporal Cloud UI
+# Bump BuildId (e.g. BuildId=v2.0) alongside workflow/activity code changes
 deploy:
     sam deploy --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM --config-env sa-demo
 
@@ -23,7 +23,7 @@ invoke:
         --env-vars events/local-env.json
 
 # Tail CloudWatch logs after a real deployment
-logs stack="py-lambda-worker":
+logs stack="aspinks-py-lambda-worker":
     sam logs --name WorkerFunction --stack-name {{ stack }} --tail --config-env sa-demo
 
 # Run a local worker against a Temporal dev server (for local development)
@@ -33,3 +33,42 @@ run-worker:
 # Start a workflow against a local Temporal dev server (for testing)
 start-workflow:
     uv run python -m app.client
+
+# Print the `temporal worker deployment create-version` command for the deployed stack.
+# Run this after `just deploy` to register the new Lambda version with Temporal Cloud.
+register-version stack="aspinks-py-lambda-worker" profile="SolutionsArchitecture/AWSAdministratorAccess" region="us-east-2":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    query_output() {
+      aws cloudformation describe-stacks \
+        --stack-name {{ stack }} \
+        --profile {{ profile }} \
+        --region {{ region }} \
+        --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" \
+        --output text
+    }
+    FUNCTION_VERSION_ARN=$(query_output WorkerFunctionVersionArn)
+    ROLE_ARN=$(query_output TemporalCloudInvokeRoleArn)
+    BUILD_ID=$(query_output BuildId)
+    DEPLOY_NAME=$(aws cloudformation describe-stacks \
+      --stack-name {{ stack }} \
+      --profile {{ profile }} \
+      --region {{ region }} \
+      --query "Stacks[0].Parameters[?ParameterKey=='TemporalDeploymentName'].ParameterValue" \
+      --output text)
+    EXTERNAL_ID=$(aws cloudformation describe-stacks \
+      --stack-name {{ stack }} \
+      --profile {{ profile }} \
+      --region {{ region }} \
+      --query "Stacks[0].Parameters[?ParameterKey=='AssumeRoleExternalId'].ParameterValue" \
+      --output text)
+    echo ""
+    echo "Run this to register the deployed version with Temporal Cloud:"
+    echo ""
+    echo "temporal worker deployment create-version \\"
+    echo "  --deployment-name $DEPLOY_NAME \\"
+    echo "  --build-id $BUILD_ID \\"
+    echo "  --aws-lambda-function-arn $FUNCTION_VERSION_ARN \\"
+    echo "  --aws-lambda-assume-role-arn $ROLE_ARN \\"
+    echo "  --aws-lambda-assume-role-external-id $EXTERNAL_ID"
+    echo ""
