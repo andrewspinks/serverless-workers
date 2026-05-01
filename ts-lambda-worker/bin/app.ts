@@ -1,8 +1,18 @@
+import { existsSync, readFileSync } from "fs";
+import * as path from "path";
 import * as cdk from "aws-cdk-lib";
 import { TsLambdaWorkerStack } from "../lib/ts-lambda-worker-stack";
 
 const app = new cdk.App();
-const buildId = app.node.tryGetContext("buildId") ?? "v1.0";
+
+// BuildId resolution order: --context buildId=... > VERSION file > "v1.0"
+// scripts/deploy.sh passes the bumped version via context; bare `cdk synth`
+// falls back to whatever VERSION currently holds.
+const versionFile = path.join(__dirname, "..", "VERSION");
+const buildId =
+  app.node.tryGetContext("buildId") ??
+  (existsSync(versionFile) ? readFileSync(versionFile, "utf8").trim() : "v1.0");
+
 const deploymentName = "ts-lambda-worker";
 
 new TsLambdaWorkerStack(app, "TsLambdaWorker-default", {

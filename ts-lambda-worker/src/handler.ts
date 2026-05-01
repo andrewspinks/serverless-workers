@@ -13,10 +13,12 @@ let handlerPromise: Promise<LambdaHandler> | undefined;
 
 async function createHandler(): Promise<LambdaHandler> {
   const tls = await getTLSCerts();
+  const deploymentName = process.env['TEMPORAL_DEPLOYMENT_NAME'] ?? 'ts-lambda-worker';
+  const buildId = process.env['TEMPORAL_BUILD_ID'] ?? 'v1.0';
   return runWorker(
-    { deploymentName: 'ts-lambda-worker', buildId: 'v1.0' },
+    { deploymentName, buildId },
     (config) => {
-      config.workerOptions.taskQueue = 'lambda-worker-queue';
+      config.workerOptions.taskQueue = process.env['TEMPORAL_TASK_QUEUE'] ?? 'lambda-worker-queue';
       config.workerOptions.workflowBundle = { code: workflowBundleCode };
       config.workerOptions.activities = activities;
       if (tls) {

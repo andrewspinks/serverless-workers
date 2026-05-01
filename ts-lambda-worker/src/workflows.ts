@@ -1,4 +1,4 @@
-import { proxyActivities } from '@temporalio/workflow';
+import { proxyActivities, setWorkflowOptions } from '@temporalio/workflow';
 import type * as activities from './activities';
 
 const { greet } = proxyActivities<typeof activities>({
@@ -8,3 +8,4 @@ const { greet } = proxyActivities<typeof activities>({
 export async function greetingWorkflow(name: string): Promise<string> {
   return await greet(name);
 }
+setWorkflowOptions({ versioningBehavior: 'PINNED' }, greetingWorkflow);
