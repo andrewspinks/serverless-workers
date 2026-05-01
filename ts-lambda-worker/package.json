@@ -3,9 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build:bundle": "ts-node src/build-bundle.ts",
-    "build:handler": "esbuild src/handler.ts --bundle --platform=node --target=node22 --outfile=dist/handler.js --external:@swc/core --external:@swc/wasm --external:'*.node'",
-    "build": "pnpm run build:bundle && pnpm run build:handler",
+    "build:bundle": "ts-node src/scripts/build-bundle.ts",
+    "build": "pnpm run build:bundle && tsc --build",
     "client": "ts-node src/client.ts"
   },
   "dependencies": {

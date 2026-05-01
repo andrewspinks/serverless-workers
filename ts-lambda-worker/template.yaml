@@ -7,7 +7,7 @@ Globals:
     Timeout: 60
     MemorySize: 256
     Runtime: nodejs22.x
-    Architectures: [arm64]
+    Architectures: [x86_64]
 
 Parameters:
   TemporalAddress:

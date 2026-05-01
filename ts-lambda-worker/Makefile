@@ -1,12 +1,12 @@
-# core-bridge is a transitive dep of @temporalio/worker, so it doesn't get a top-level
-# symlink in node_modules/@temporalio/. Resolve via the worker package's pnpm virtual-store
-# entry, which always exposes a version-matched core-bridge symlink.
-WORKER_PNPM_DIR := $(shell readlink node_modules/@temporalio/worker | awk -F/ '{print $$3}')
-CORE_BRIDGE_RELEASES := node_modules/.pnpm/$(WORKER_PNPM_DIR)/node_modules/@temporalio/core-bridge/releases
-
 build-WorkerFunction:
 	pnpm install --frozen-lockfile
-	pnpm run build
-	cp dist/* $(ARTIFACTS_DIR)/
-	mkdir -p $(ARTIFACTS_DIR)/releases/aarch64-unknown-linux-gnu
-	cp $(CORE_BRIDGE_RELEASES)/aarch64-unknown-linux-gnu/index.node $(ARTIFACTS_DIR)/releases/aarch64-unknown-linux-gnu/index.node
+	pnpm run build:bundle
+	pnpm exec tsc --build --force
+	cp dist/*.js $(ARTIFACTS_DIR)/
+	cp package.json $(ARTIFACTS_DIR)/
+	cp temporal.toml $(ARTIFACTS_DIR)/
+	cp client.* $(ARTIFACTS_DIR)/
+	cd $(ARTIFACTS_DIR) && npm install --omit=dev --ignore-scripts
+	find $(ARTIFACTS_DIR)/node_modules/@temporalio/core-bridge/releases \
+		-mindepth 1 -maxdepth 1 \
+		! -name 'x86_64-unknown-linux-gnu' -exec rm -rf {} +
