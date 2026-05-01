@@ -1,6 +1,3 @@
-# NOTE: @temporalio/lambda-worker is not yet on npm (merged to main, pending next SDK release).
-# Install will fail until published. Pin all @temporalio/* packages to the same version when released.
-
 # Install dependencies
 install:
     pnpm install

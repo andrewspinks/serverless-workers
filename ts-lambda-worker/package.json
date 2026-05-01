@@ -4,18 +4,18 @@
   "private": true,
   "scripts": {
     "build:bundle": "ts-node src/build-bundle.ts",
-    "build:handler": "esbuild src/handler.ts --bundle --platform=node --target=node22 --outfile=dist/handler.js --external:@swc/core --external:@swc/wasm --external:'*.node' && node scripts/patch-bundle.mjs",
+    "build:handler": "esbuild src/handler.ts --bundle --platform=node --target=node22 --outfile=dist/handler.js --external:@swc/core --external:@swc/wasm --external:'*.node'",
     "build": "pnpm run build:bundle && pnpm run build:handler",
     "client": "ts-node src/client.ts"
   },
   "dependencies": {
     "@aws-sdk/client-secrets-manager": "^3.0.0",
-    "@temporalio/activity": "^1.16.0",
-    "@temporalio/client": "^1.16.0",
-    "@temporalio/envconfig": "^1.16.0",
-    "@temporalio/lambda-worker": "^1.16.0",
-    "@temporalio/worker": "^1.16.0",
-    "@temporalio/workflow": "^1.16.0"
+    "@temporalio/activity": "^1.17.0",
+    "@temporalio/client": "^1.17.0",
+    "@temporalio/envconfig": "^1.17.0",
+    "@temporalio/lambda-worker": "^1.17.0",
+    "@temporalio/worker": "^1.17.0",
+    "@temporalio/workflow": "^1.17.0"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.0",
