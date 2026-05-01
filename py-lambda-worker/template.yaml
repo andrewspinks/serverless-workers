@@ -52,6 +52,13 @@ Parameters:
       ARN of the AWS Distro for OpenTelemetry (ADOT) Lambda layer for Python arm64.
       Find the latest at https://aws-otel.github.io/docs/getting-started/lambda
     Default: "arn:aws:lambda:us-east-2:901920570463:layer:aws-otel-python-arm64-ver-1-32-0:1"
+  LambdaInsightsLayerArn:
+    Type: String
+    Description: >
+      ARN of the CloudWatch Lambda Insights extension layer (arm64). Publishes per-invocation
+      CPU, memory, and network metrics to the LambdaInsights namespace. Latest versions:
+      https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Lambda-Insights-extension-versionsARM.html
+    Default: "arn:aws:lambda:us-east-2:580247275435:layer:LambdaInsightsExtension-Arm64:33"
 
 Conditions:
   HasTLSCerts: !And
@@ -72,8 +79,10 @@ Resources:
       Tracing: Active
       Layers:
         - !Ref AdotLayerArn
+        - !Ref LambdaInsightsLayerArn
       Policies:
         - arn:aws:iam::aws:policy/CloudWatchLambdaApplicationSignalsExecutionRolePolicy
+        - arn:aws:iam::aws:policy/CloudWatchLambdaInsightsExecutionRolePolicy
       Environment:
         Variables:
           TEMPORAL_ADDRESS: !Ref TemporalAddress
@@ -143,6 +152,236 @@ Resources:
       Roles:
         - !Ref TemporalCloudInvokeRole
 
+  WorkerDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub "${AWS::StackName}-temporal-sdk"
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            { "type": "text", "x": 0, "y": 0, "width": 24, "height": 1, "properties": { "markdown": "## Lambda Runtime" } },
+
+            { "type": "metric", "x": 0, "y": 1, "width": 8, "height": 6, "properties": {
+              "metrics": [
+                [ "LambdaInsights", "cpu_total_time", "function_name", "${WorkerFunction}", { "stat": "Average", "label": "avg" } ],
+                [ "...", { "stat": "p95", "label": "p95" } ]
+              ],
+              "view": "timeSeries", "stacked": false, "region": "${AWS::Region}", "title": "CPU Total Time (ms)", "period": 60
+            } },
+            { "type": "metric", "x": 8, "y": 1, "width": 8, "height": 6, "properties": {
+              "metrics": [
+                [ "LambdaInsights", "memory_utilization", "function_name", "${WorkerFunction}", { "stat": "Average", "label": "avg" } ],
+                [ "...", { "stat": "Maximum", "label": "max" } ]
+              ],
+              "view": "timeSeries", "stacked": false, "region": "${AWS::Region}", "title": "Memory Utilization (%)", "period": 60, "yAxis": { "left": { "min": 0, "max": 100 } }
+            } },
+            { "type": "metric", "x": 16, "y": 1, "width": 8, "height": 6, "properties": {
+              "metrics": [
+                [ "LambdaInsights", "used_memory_max", "function_name", "${WorkerFunction}", { "stat": "Maximum", "label": "max used" } ],
+                [ "LambdaInsights", "total_memory", "function_name", "${WorkerFunction}", { "stat": "Maximum", "label": "allocated" } ]
+              ],
+              "view": "timeSeries", "stacked": false, "region": "${AWS::Region}", "title": "Memory Used vs Allocated (MB)", "period": 60
+            } },
+
+            { "type": "metric", "x": 0, "y": 7, "width": 12, "height": 6, "properties": {
+              "metrics": [
+                [ "AWS/Lambda", "Invocations", "FunctionName", "${WorkerFunction}", { "stat": "Sum" } ],
+                [ ".", "Errors", ".", ".", { "stat": "Sum" } ],
+                [ ".", "Throttles", ".", ".", { "stat": "Sum" } ]
+              ],
+              "view": "timeSeries", "stacked": false, "region": "${AWS::Region}", "title": "Invocations / Errors / Throttles", "period": 60
+            } },
+            { "type": "metric", "x": 12, "y": 7, "width": 12, "height": 6, "properties": {
+              "metrics": [
+                [ "AWS/Lambda", "Duration", "FunctionName", "${WorkerFunction}", { "stat": "p50", "label": "p50" } ],
+                [ "...", { "stat": "p95", "label": "p95" } ],
+                [ "...", { "stat": "p99", "label": "p99" } ]
+              ],
+              "view": "timeSeries", "stacked": false, "region": "${AWS::Region}", "title": "Duration (ms)", "period": 60
+            } },
+
+            { "type": "text", "x": 0, "y": 13, "width": 24, "height": 1, "properties": { "markdown": "## RPC" } },
+
+            { "type": "metric", "x": 0, "y": 14, "width": 12, "height": 6, "properties": {
+              "metrics": [
+                [ { "expression": "SEARCH('{TemporalWorkerMetrics,namespace,operation,task_queue} MetricName=\"temporal_request\"', 'Sum', 60)", "label": "requests", "id": "e1" } ],
+                [ { "expression": "SEARCH('{TemporalWorkerMetrics,namespace,operation,task_queue,status_code} MetricName=\"temporal_request_failure\"', 'Sum', 60)", "label": "failures", "id": "e2" } ]
+              ],
+              "view": "timeSeries", "stacked": false, "region": "${AWS::Region}", "title": "RPC Requests vs Failures", "period": 60
+            } },
+            { "type": "metric", "x": 12, "y": 14, "width": 12, "height": 6, "properties": {
+              "metrics": [
+                [ { "expression": "SEARCH('{TemporalWorkerMetrics,namespace,operation,task_queue} MetricName=\"temporal_request_latency\"', 'p95', 60)", "label": "p95", "id": "e1" } ]
+              ],
+              "view": "timeSeries", "stacked": false, "region": "${AWS::Region}", "title": "RPC Latencies p95 (ms)", "period": 60
+            } },
+
+            { "type": "metric", "x": 0, "y": 20, "width": 12, "height": 6, "properties": {
+              "metrics": [
+                [ { "expression": "SEARCH('{TemporalWorkerMetrics,namespace,operation,task_queue} MetricName=\"temporal_request\"', 'Sum', 60)", "label": "", "id": "e1" } ]
+              ],
+              "view": "timeSeries", "stacked": false, "region": "${AWS::Region}", "title": "RPC Requests Per Operation", "period": 60
+            } },
+            { "type": "metric", "x": 12, "y": 20, "width": 12, "height": 6, "properties": {
+              "metrics": [
+                [ { "expression": "SEARCH('{TemporalWorkerMetrics,namespace,operation,task_queue,status_code} MetricName=\"temporal_request_failure\"', 'Sum', 60)", "label": "", "id": "e1" } ]
+              ],
+              "view": "timeSeries", "stacked": false, "region": "${AWS::Region}", "title": "RPC Failures Per Operation", "period": 60
+            } },
+
+            { "type": "metric", "x": 0, "y": 26, "width": 12, "height": 6, "properties": {
+              "metrics": [
+                [ { "expression": "SEARCH('{TemporalWorkerMetrics,namespace,operation,task_queue,status_code} MetricName=\"temporal_long_request_failure\"', 'Sum', 60)", "label": "", "id": "e1" } ]
+              ],
+              "view": "timeSeries", "stacked": false, "region": "${AWS::Region}", "title": "Long RPC Failures Per Operation", "period": 60
+            } },
+            { "type": "metric", "x": 12, "y": 26, "width": 12, "height": 6, "properties": {
+              "metrics": [
+                [ { "expression": "SEARCH('{TemporalWorkerMetrics,namespace,operation,task_queue} MetricName=\"temporal_long_request_latency\"', 'p95', 60)", "label": "p95", "id": "e1" } ]
+              ],
+              "view": "timeSeries", "stacked": false, "region": "${AWS::Region}", "title": "Long RPC Latencies p95 (ms)", "period": 60
+            } },
+
+            { "type": "text", "x": 0, "y": 32, "width": 24, "height": 1, "properties": { "markdown": "## Workflow" } },
+
+            { "type": "metric", "x": 0, "y": 33, "width": 8, "height": 6, "properties": {
+              "metrics": [
+                [ { "expression": "SEARCH('{TemporalWorkerMetrics,namespace,task_queue,workflow_type} MetricName=\"temporal_workflow_completed\"', 'Sum', 60)", "label": "", "id": "e1" } ]
+              ],
+              "view": "timeSeries", "stacked": false, "region": "${AWS::Region}", "title": "Workflow Completion", "period": 60
+            } },
+            { "type": "metric", "x": 8, "y": 33, "width": 8, "height": 6, "properties": {
+              "metrics": [
+                [ { "expression": "SEARCH('{TemporalWorkerMetrics,namespace,task_queue,workflow_type} MetricName=\"temporal_workflow_endtoend_latency\"', 'p95', 60)", "label": "p95", "id": "e1" } ]
+              ],
+              "view": "timeSeries", "stacked": false, "region": "${AWS::Region}", "title": "Workflow End-to-End Latency p95 (ms)", "period": 60
+            } },
+            { "type": "metric", "x": 16, "y": 33, "width": 8, "height": 6, "properties": {
+              "metrics": [
+                [ { "expression": "SEARCH('{TemporalWorkerMetrics,namespace,task_queue,workflow_type} MetricName=\"temporal_workflow_failed\"', 'Sum', 60)", "label": "", "id": "e1" } ]
+              ],
+              "view": "timeSeries", "stacked": false, "region": "${AWS::Region}", "title": "Workflow Failures By Type", "period": 60
+            } },
+
+            { "type": "text", "x": 0, "y": 39, "width": 24, "height": 1, "properties": { "markdown": "## Workflow Tasks" } },
+
+            { "type": "metric", "x": 0, "y": 40, "width": 12, "height": 6, "properties": {
+              "metrics": [
+                [ { "expression": "SEARCH('{TemporalWorkerMetrics,namespace,task_queue} MetricName=\"temporal_workflow_task_queue_poll_succeed\"', 'Sum', 60)", "label": "", "id": "e1" } ]
+              ],
+              "view": "timeSeries", "stacked": false, "region": "${AWS::Region}", "title": "Workflow Task Throughput", "period": 60
+            } },
+            { "type": "metric", "x": 12, "y": 40, "width": 12, "height": 6, "properties": {
+              "metrics": [
+                [ { "expression": "SEARCH('{TemporalWorkerMetrics,namespace,task_queue} MetricName=\"temporal_workflow_task_queue_poll_empty\"', 'Sum', 60)", "label": "", "id": "e1" } ]
+              ],
+              "view": "timeSeries", "stacked": false, "region": "${AWS::Region}", "title": "Workflow Task Empty Polls", "period": 60
+            } },
+
+            { "type": "metric", "x": 0, "y": 46, "width": 12, "height": 6, "properties": {
+              "metrics": [
+                [ { "expression": "SEARCH('{TemporalWorkerMetrics,namespace,task_queue} MetricName=\"temporal_workflow_task_schedule_to_start_latency\"', 'p95', 60)", "label": "p95", "id": "e1" } ]
+              ],
+              "view": "timeSeries", "stacked": false, "region": "${AWS::Region}", "title": "Workflow Task Schedule To Start p95 (ms)", "period": 60
+            } },
+            { "type": "metric", "x": 12, "y": 46, "width": 12, "height": 6, "properties": {
+              "metrics": [
+                [ { "expression": "SEARCH('{TemporalWorkerMetrics,namespace,task_queue,workflow_type} MetricName=\"temporal_workflow_task_execution_latency\"', 'p95', 60)", "label": "p95", "id": "e1" } ]
+              ],
+              "view": "timeSeries", "stacked": false, "region": "${AWS::Region}", "title": "Workflow Task Execution Latency p95 (ms)", "period": 60
+            } },
+
+            { "type": "metric", "x": 0, "y": 52, "width": 12, "height": 6, "properties": {
+              "metrics": [
+                [ { "expression": "SEARCH('{TemporalWorkerMetrics,namespace,task_queue,failure_reason} MetricName=\"temporal_workflow_task_execution_failed\"', 'Sum', 60)", "label": "", "id": "e1" } ]
+              ],
+              "view": "timeSeries", "stacked": false, "region": "${AWS::Region}", "title": "Workflow Task Failed", "period": 60
+            } },
+            { "type": "metric", "x": 12, "y": 52, "width": 12, "height": 6, "properties": {
+              "metrics": [
+                [ { "expression": "SEARCH('{TemporalWorkerMetrics,namespace,task_queue} MetricName=\"temporal_workflow_task_replay_latency\"', 'p95', 60)", "label": "p95", "id": "e1" } ]
+              ],
+              "view": "timeSeries", "stacked": false, "region": "${AWS::Region}", "title": "Workflow Task Replay Latency p95 (ms)", "period": 60
+            } },
+
+            { "type": "text", "x": 0, "y": 58, "width": 24, "height": 1, "properties": { "markdown": "## Activity" } },
+
+            { "type": "metric", "x": 0, "y": 59, "width": 8, "height": 6, "properties": {
+              "metrics": [
+                [ { "expression": "SEARCH('{TemporalWorkerMetrics,namespace,task_queue,activity_type} MetricName=\"temporal_activity_schedule_to_start_latency\"', 'SampleCount', 60)", "label": "", "id": "e1" } ]
+              ],
+              "view": "timeSeries", "stacked": false, "region": "${AWS::Region}", "title": "Activity Throughput", "period": 60
+            } },
+            { "type": "metric", "x": 8, "y": 59, "width": 8, "height": 6, "properties": {
+              "metrics": [
+                [ { "expression": "SEARCH('{TemporalWorkerMetrics,namespace,task_queue,activity_type} MetricName=\"temporal_activity_execution_failed\"', 'Sum', 60)", "label": "", "id": "e1" } ]
+              ],
+              "view": "timeSeries", "stacked": false, "region": "${AWS::Region}", "title": "Activity Failed", "period": 60
+            } },
+            { "type": "metric", "x": 16, "y": 59, "width": 8, "height": 6, "properties": {
+              "metrics": [
+                [ { "expression": "SEARCH('{TemporalWorkerMetrics,namespace,task_queue} MetricName=\"temporal_activity_poll_no_task\"', 'Sum', 60)", "label": "", "id": "e1" } ]
+              ],
+              "view": "timeSeries", "stacked": false, "region": "${AWS::Region}", "title": "Empty Activity Polls", "period": 60
+            } },
+
+            { "type": "metric", "x": 0, "y": 65, "width": 12, "height": 6, "properties": {
+              "metrics": [
+                [ { "expression": "SEARCH('{TemporalWorkerMetrics,namespace,task_queue,activity_type} MetricName=\"temporal_activity_execution_latency\"', 'p95', 60)", "label": "p95", "id": "e1" } ]
+              ],
+              "view": "timeSeries", "stacked": false, "region": "${AWS::Region}", "title": "Activity Execution Latency p95 (ms)", "period": 60
+            } },
+            { "type": "metric", "x": 12, "y": 65, "width": 12, "height": 6, "properties": {
+              "metrics": [
+                [ { "expression": "SEARCH('{TemporalWorkerMetrics,namespace,task_queue,activity_type} MetricName=\"temporal_activity_schedule_to_start_latency\"', 'p95', 60)", "label": "p95", "id": "e1" } ]
+              ],
+              "view": "timeSeries", "stacked": false, "region": "${AWS::Region}", "title": "Activity Schedule To Start p95 (ms)", "period": 60
+            } },
+
+            { "type": "text", "x": 0, "y": 71, "width": 24, "height": 1, "properties": { "markdown": "## Worker Slots" } },
+
+            { "type": "metric", "x": 0, "y": 72, "width": 12, "height": 6, "properties": {
+              "metrics": [
+                [ { "expression": "SEARCH('{TemporalWorkerMetrics,namespace,task_queue,worker_type} MetricName=\"temporal_worker_task_slots_available\"', 'Average', 60)", "label": "", "id": "e1" } ]
+              ],
+              "view": "timeSeries", "stacked": false, "region": "${AWS::Region}", "title": "Slots Available", "period": 60
+            } },
+            { "type": "metric", "x": 12, "y": 72, "width": 12, "height": 6, "properties": {
+              "metrics": [
+                [ { "expression": "SEARCH('{TemporalWorkerMetrics,namespace,task_queue,worker_type} MetricName=\"temporal_worker_task_slots_used\"', 'Average', 60)", "label": "", "id": "e1" } ]
+              ],
+              "view": "timeSeries", "stacked": false, "region": "${AWS::Region}", "title": "Slots Used", "period": 60
+            } },
+
+            { "type": "text", "x": 0, "y": 78, "width": 24, "height": 1, "properties": { "markdown": "## Sticky Cache" } },
+
+            { "type": "metric", "x": 0, "y": 79, "width": 6, "height": 6, "properties": {
+              "metrics": [
+                [ { "expression": "SEARCH('{TemporalWorkerMetrics,namespace,task_queue} MetricName=\"temporal_sticky_cache_size\"', 'Average', 60)", "label": "", "id": "e1" } ]
+              ],
+              "view": "timeSeries", "stacked": false, "region": "${AWS::Region}", "title": "Sticky Cache Size", "period": 60
+            } },
+            { "type": "metric", "x": 6, "y": 79, "width": 6, "height": 6, "properties": {
+              "metrics": [
+                [ { "expression": "SEARCH('{TemporalWorkerMetrics,namespace,task_queue} MetricName=\"temporal_sticky_cache_hit\"', 'Sum', 60)", "label": "", "id": "e1" } ]
+              ],
+              "view": "timeSeries", "stacked": false, "region": "${AWS::Region}", "title": "Sticky Cache Hit", "period": 60
+            } },
+            { "type": "metric", "x": 12, "y": 79, "width": 6, "height": 6, "properties": {
+              "metrics": [
+                [ { "expression": "SEARCH('{TemporalWorkerMetrics,namespace,task_queue} MetricName=\"temporal_sticky_cache_miss\"', 'Sum', 60)", "label": "", "id": "e1" } ]
+              ],
+              "view": "timeSeries", "stacked": false, "region": "${AWS::Region}", "title": "Sticky Cache Miss", "period": 60
+            } },
+            { "type": "metric", "x": 18, "y": 79, "width": 6, "height": 6, "properties": {
+              "metrics": [
+                [ { "expression": "SEARCH('{TemporalWorkerMetrics,namespace,task_queue} MetricName=\"temporal_sticky_cache_total_forced_eviction\"', 'Sum', 60)", "label": "", "id": "e1" } ]
+              ],
+              "view": "timeSeries", "stacked": false, "region": "${AWS::Region}", "title": "Sticky Cache Forced Eviction", "period": 60
+            } }
+          ]
+        }
+
 Outputs:
   WorkerFunctionArn:
     Description: Lambda function base ARN
@@ -167,3 +406,7 @@ Outputs:
   TemporalCloudInvokeRoleArn:
     Description: IAM role ARN to supply to Temporal Cloud when registering the serverless worker deployment
     Value: !GetAtt TemporalCloudInvokeRole.Arn
+
+  DashboardUrl:
+    Description: CloudWatch dashboard URL for Temporal SDK + Lambda runtime metrics
+    Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${AWS::StackName}-temporal-sdk"
