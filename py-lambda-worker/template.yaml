@@ -46,6 +46,12 @@ Parameters:
     AllowedPattern: "[a-zA-Z0-9_+=,.@-]*"
     MinLength: 5
     MaxLength: 45
+  AdotLayerArn:
+    Type: String
+    Description: >
+      ARN of the AWS Distro for OpenTelemetry (ADOT) Lambda layer for Python arm64.
+      Find the latest at https://aws-otel.github.io/docs/getting-started/lambda
+    Default: "arn:aws:lambda:us-east-2:901920570463:layer:aws-otel-python-arm64-ver-1-32-0:1"
 
 Conditions:
   HasTLSCerts: !And
@@ -63,6 +69,11 @@ Resources:
       # and keeps the "current" alias pointing to it. The versioned ARN is what gets
       # registered with Temporal so each build_id maps to a pinned Lambda snapshot.
       AutoPublishAlias: current
+      Tracing: Active
+      Layers:
+        - !Ref AdotLayerArn
+      Policies:
+        - arn:aws:iam::aws:policy/CloudWatchLambdaApplicationSignalsExecutionRolePolicy
       Environment:
         Variables:
           TEMPORAL_ADDRESS: !Ref TemporalAddress
@@ -72,6 +83,7 @@ Resources:
           TEMPORAL_BUILD_ID: !Ref BuildId
           TEMPORAL_TLS_CERT_ARN: !Ref TemporalTLSCertArn
           TEMPORAL_TLS_KEY_ARN: !Ref TemporalTLSKeyArn
+          OPENTELEMETRY_COLLECTOR_CONFIG_FILE: /var/task/otel-collector-config.yaml
     Metadata:
       BuildMethod: makefile
 
@@ -126,8 +138,8 @@ Resources:
               - lambda:InvokeFunction
               - lambda:GetFunction
             Resource:
-              - !GetAtt WorkerFunction.Arn          # $LATEST
-              - !Sub "${WorkerFunction.Arn}:*"      # all versions and aliases
+              - !GetAtt WorkerFunction.Arn # $LATEST
+              - !Sub "${WorkerFunction.Arn}:*" # all versions and aliases
       Roles:
         - !Ref TemporalCloudInvokeRole
 

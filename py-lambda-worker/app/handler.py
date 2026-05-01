@@ -2,6 +2,7 @@ import os
 
 from temporalio.common import WorkerDeploymentVersion
 from temporalio.contrib.aws.lambda_worker import LambdaWorkerConfig, run_worker
+from temporalio.contrib.aws.lambda_worker.otel import apply_defaults
 
 from .activities import greet
 from .certs import get_tls_certs
@@ -21,6 +22,7 @@ def configure(config: LambdaWorkerConfig) -> None:
     tls = get_tls_certs()
     if tls:
         config.client_connect_config["tls"] = tls
+    apply_defaults(config)
 
 
 # run_worker reads TEMPORAL_ADDRESS, TEMPORAL_NAMESPACE, TEMPORAL_TASK_QUEUE

@@ -5,3 +5,4 @@ build-WorkerFunction:
 	    --python-version 3.12
 	mkdir -p $(ARTIFACTS_DIR)/app
 	cp app/*.py $(ARTIFACTS_DIR)/app/
+	cp otel-collector-config.yaml $(ARTIFACTS_DIR)/
