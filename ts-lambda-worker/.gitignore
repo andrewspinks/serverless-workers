@@ -1,4 +1,5 @@
 dist/
-.aws-sam/
+dist-lambda/
+cdk.out/
 node_modules/
-samconfig.toml
+tsconfig.tsbuildinfo

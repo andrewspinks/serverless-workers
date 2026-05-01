@@ -6,30 +6,37 @@ install:
 build:
     pnpm run build
 
-# SAM build (runs Makefile target, populates .aws-sam/build/)
+# Build the Lambda artifact directory consumed by `cdk deploy` (produces dist-lambda/)
+build-lambda:
+    pnpm run build:lambda
 
-# --build-in-source keeps the build in the project dir so link: paths resolve correctly
-sam-build:
-    sam build --build-in-source
+# Synthesize CloudFormation templates without contacting AWS
+synth env="sa-demo":
+    pnpm exec cdk synth TsLambdaWorker-{{ env }}
 
-# Deploy to AWS (interactive first run; writes samconfig.toml)
+# Deploy via CDK. Defaults to the sa-demo environment.
+deploy env="sa-demo":
+    pnpm run build:lambda
+    pnpm exec cdk deploy TsLambdaWorker-{{ env }} --require-approval never
 
-# Supply AssumeRoleExternalId from the Temporal Cloud UI
-deploy:
-    sam deploy --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM --config-env sa-demo #--profile support-sandbox-1/AWSAdministratorAccess
+# Bootstrap the CDK environment in the target account/region (run once per account/region)
+bootstrap env="sa-demo":
+    pnpm exec cdk bootstrap TsLambdaWorker-{{ env }}
 
-# Invoke the Lambda locally against a running Temporal dev server
-
-# SAM local runs inside Docker — host.docker.internal routes to your machine
+# Invoke the handler locally against a running Temporal dev server
 invoke:
-    sam local invoke WorkerFunction \
-        --event events/invoke.json \
-        --env-vars events/local-env.json
+    pnpm exec ts-node src/scripts/local-handler.ts events/invoke.json events/local-env.json
 
 # Tail CloudWatch logs after a real deployment
-logs stack="ts-lambda-worker":
-    sam logs --name WorkerFunction --stack-name {{ stack }} --tail
+logs stack="aspinks-ts-lambda-worker":
+    aws logs tail \
+        /aws/lambda/$(aws cloudformation describe-stack-resources \
+            --stack-name {{ stack }} \
+            --logical-resource-id WorkerFunction \
+            --query 'StackResources[0].PhysicalResourceId' \
+            --output text) \
+        --follow
 
 # Start a workflow against a local Temporal dev server (for testing)
 start-workflow:
-    ts-node src/client.ts
+    pnpm exec ts-node src/client.ts

@@ -5,6 +5,7 @@
   "scripts": {
     "build:bundle": "ts-node src/scripts/build-bundle.ts",
     "build": "pnpm run build:bundle && tsc --build",
+    "build:lambda": "ts-node src/scripts/build-lambda.ts",
     "client": "ts-node src/client.ts"
   },
   "dependencies": {
@@ -20,6 +21,9 @@
     "@types/aws-lambda": "^8.10.0",
     "@types/node": "^22.0.0",
     "@tsconfig/node22": "^22.0.0",
+    "aws-cdk": "^2.1120.0",
+    "aws-cdk-lib": "^2.252.0",
+    "constructs": "^10.6.0",
     "esbuild": "^0.24.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.6.0"
