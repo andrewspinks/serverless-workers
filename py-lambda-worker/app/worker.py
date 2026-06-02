@@ -1,22 +1,20 @@
 import asyncio
 import os
 
-from temporalio.client import Client
 from temporalio.common import WorkerDeploymentVersion
 from temporalio.worker import Worker, WorkerDeploymentConfig
 
 from .activities import greet
+from .connection import connect
 from .workflows import GreetingWorkflow
 
 
 async def main() -> None:
-    address = os.environ.get("TEMPORAL_ADDRESS", "localhost:7233")
-    namespace = os.environ.get("TEMPORAL_NAMESPACE", "default")
     task_queue = os.environ.get("TEMPORAL_TASK_QUEUE", "py-lambda-worker-queue")
     deployment_name = os.environ.get("TEMPORAL_DEPLOYMENT_NAME", "py-lambda-worker")
     build_id = os.environ.get("TEMPORAL_BUILD_ID", "v1.0")
 
-    client = await Client.connect(address, namespace=namespace)
+    client = await connect()
     worker = Worker(
         client,
         task_queue=task_queue,

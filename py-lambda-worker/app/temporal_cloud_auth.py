@@ -21,7 +21,9 @@ def get_api_key() -> str | None:
         _fetched = True
         return None
 
-    ssm = boto3.client("ssm")
-    _cached = ssm.get_parameter(Name=param_name, WithDecryption=True)["Parameter"]["Value"]
+    ssm = boto3.client("ssm", region_name=os.environ.get("AWS_REGION"))
+    _cached = ssm.get_parameter(Name=param_name, WithDecryption=True)["Parameter"][
+        "Value"
+    ]
     _fetched = True
     return _cached

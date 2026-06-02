@@ -27,6 +27,7 @@ run = "sam build"
 
 [tasks.deploy]
 description = "Deploy to AWS (requires MISE_ENV=staging|prod). Omit build_id to auto-increment minor version."
+depends = ["sam-build"]
 usage = 'arg "<build_id>" help="Explicit version e.g. v2.0; omit to auto-increment" default=""'
 run = "./scripts/deploy.sh ${usage_build_id:-}"
 
@@ -40,12 +41,12 @@ description = "Tail CloudWatch logs for the deployed stack (requires MISE_ENV)"
 run = 'sam logs --name WorkerFunction --stack-name "$STACK_NAME" --region "$AWS_REGION" --tail'
 
 [tasks.run-worker]
-description = "Run a local worker against a Temporal dev server"
+description = "Run a worker against the active env's Temporal (local dev by default; Cloud with MISE_ENV)"
 run = "uv run python -m app.worker"
 
 [tasks.start-workflow]
-description = "Start a workflow against a local Temporal dev server"
-run = "uv run python -m app.client"
+description = "Start a GreetingWorkflow against the active env's Temporal (local dev by default; Cloud with MISE_ENV)"
+run = "uv run python -m app.starter"
 
 [tasks.register-version]
 description = "Print the `temporal worker deployment create-version` command for the deployed stack (requires MISE_ENV)"
