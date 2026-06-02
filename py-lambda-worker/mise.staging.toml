@@ -1,0 +1,13 @@
+# Temporal Cloud staging target (sa-demo). Selected with MISE_ENV=staging.
+[env]
+AWS_REGION  = "us-east-2"
+AWS_PROFILE = "SolutionsArchitecture/AWSAdministratorAccess"
+STACK_NAME  = "aspinks-py-lambda-worker"
+
+# NOTE: API key auth uses the regional gRPC endpoint, NOT the *.tmprl.cloud mTLS endpoint.
+# Update TEMPORAL_ADDRESS to the API-key endpoint for this environment.
+TEMPORAL_ADDRESS        = "sa-demo-01.temporal-dev.tmprl-test.cloud:7233"
+TEMPORAL_NAMESPACE      = "sa-demo-01.temporal-dev"
+TEMPORAL_TASK_QUEUE     = "py-lambda-worker-queue-3"
+TEMPORAL_API_KEY_PARAM  = "/temporal/serverless/api-key"
+ASSUME_ROLE_EXTERNAL_ID = "python-external-id"

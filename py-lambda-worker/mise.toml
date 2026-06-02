@@ -1,0 +1,52 @@
+# Base config: tools + tasks + LOCAL-DEV defaults.
+# Deploy targets live in mise.<env>.toml — select with MISE_ENV, e.g.
+#   MISE_ENV=staging mise run deploy
+[tools]
+python = "3.12"        # match the Lambda runtime (template.yaml Runtime: python3.12)
+uv = "latest"
+aws-sam-cli = "latest"
+awscli = "latest"      # used by register-version + sam credential resolution
+
+[env]
+# Local dev defaults (temporal server start-dev). Overridden by mise.staging.toml / mise.prod.toml.
+TEMPORAL_ADDRESS = "localhost:7233"
+TEMPORAL_NAMESPACE = "default"
+TEMPORAL_TASK_QUEUE = "py-lambda-worker-queue"
+
+[tasks.install]
+description = "Install dependencies"
+run = "uv sync"
+
+[tasks.build]
+description = "No build step required for Python workers"
+run = "echo 'No build step required for Python workers'"
+
+[tasks.sam-build]
+description = "SAM build (populates .aws-sam/build/)"
+run = "sam build"
+
+[tasks.deploy]
+description = "Deploy to AWS (requires MISE_ENV=staging|prod). Omit build_id to auto-increment minor version."
+usage = 'arg "<build_id>" help="Explicit version e.g. v2.0; omit to auto-increment" default=""'
+run = "./scripts/deploy.sh ${usage_build_id:-}"
+
+[tasks.invoke]
+description = "Invoke the Lambda locally against a running Temporal dev server (SAM local runs in Docker)"
+run = "sam local invoke WorkerFunction --event events/invoke.json --env-vars events/local-env.json"
+
+[tasks.logs]
+description = "Tail CloudWatch logs for the deployed stack (requires MISE_ENV)"
+# --region is explicit: sam does not honor the AWS_REGION env var (falls back to profile default).
+run = 'sam logs --name WorkerFunction --stack-name "$STACK_NAME" --region "$AWS_REGION" --tail'
+
+[tasks.run-worker]
+description = "Run a local worker against a Temporal dev server"
+run = "uv run python -m app.worker"
+
+[tasks.start-workflow]
+description = "Start a workflow against a local Temporal dev server"
+run = "uv run python -m app.client"
+
+[tasks.register-version]
+description = "Print the `temporal worker deployment create-version` command for the deployed stack (requires MISE_ENV)"
+run = "./scripts/register-version.sh"

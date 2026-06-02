@@ -1,0 +1,13 @@
+# Temporal Cloud production target. Selected with MISE_ENV=prod.
+# Fill in the CHANGE_ME values before deploying to prod.
+[env]
+AWS_REGION  = "us-east-2"
+AWS_PROFILE = "CHANGE_ME"                      # prod AWS profile
+STACK_NAME  = "aspinks-py-lambda-worker-prod"
+
+# API key auth uses the regional gRPC endpoint, NOT the *.tmprl.cloud mTLS endpoint.
+TEMPORAL_ADDRESS        = "CHANGE_ME"          # prod Temporal Cloud API-key gRPC endpoint
+TEMPORAL_NAMESPACE      = "CHANGE_ME"
+TEMPORAL_TASK_QUEUE     = "py-lambda-worker-queue"
+TEMPORAL_API_KEY_PARAM  = "/temporal/serverless/api-key"
+ASSUME_ROLE_EXTERNAL_ID = "CHANGE_ME"

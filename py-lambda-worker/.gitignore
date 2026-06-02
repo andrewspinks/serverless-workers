@@ -2,4 +2,3 @@ dist/
 .aws-sam/
 __pycache__
 samconfig.toml
-temporal.toml

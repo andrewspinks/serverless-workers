@@ -1,0 +1,12 @@
+# Temporal Cloud production target
+[env]
+AWS_REGION  = "us-east-2"
+AWS_PROFILE = "devsuccess-sandbox/AWSAdministratorAccess"                      # prod AWS profile
+STACK_NAME  = "aspinks-py-lambda-worker-prod"
+
+# API key auth uses the regional gRPC endpoint, NOT the *.tmprl.cloud mTLS endpoint.
+TEMPORAL_ADDRESS        = "aspinks-serverless.a2dd6.tmprl.cloud:7233"          # prod Temporal Cloud API-key gRPC endpoint
+TEMPORAL_NAMESPACE      = "aspinks-serverless.a2dd6"
+TEMPORAL_TASK_QUEUE     = "py-lambda-worker-queue"
+TEMPORAL_API_KEY_PARAM  = "/temporal/serverless/api-key"
+ASSUME_ROLE_EXTERNAL_ID = "py-lambda-worker-external-id"

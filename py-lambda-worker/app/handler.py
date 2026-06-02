@@ -5,7 +5,7 @@ from temporalio.contrib.aws.lambda_worker import LambdaWorkerConfig, run_worker
 from temporalio.contrib.aws.lambda_worker.otel import apply_defaults
 
 from .activities import greet
-from .certs import get_tls_certs
+from .temporal_cloud_auth import get_api_key
 from .workflows import GreetingWorkflow
 
 _deployment_name = os.environ.get("TEMPORAL_DEPLOYMENT_NAME", "py-lambda-worker")
@@ -19,9 +19,10 @@ def configure(config: LambdaWorkerConfig) -> None:
         f"Configuring worker on task queue: {config.worker_config.get('task_queue')}"
         f" deployment={_deployment_name} build_id={_build_id}"
     )
-    tls = get_tls_certs()
-    if tls:
-        config.client_connect_config["tls"] = tls
+    api_key = get_api_key()
+    if api_key:
+        # TLS is auto-enabled by the SDK when an api_key is set (Temporal Cloud).
+        config.client_connect_config["api_key"] = api_key
     apply_defaults(config)
 
 
