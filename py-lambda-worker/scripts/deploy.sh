@@ -52,7 +52,10 @@ sam deploy \
         TemporalTaskQueue="$TEMPORAL_TASK_QUEUE" \
         TemporalApiKeyParam="$TEMPORAL_API_KEY_PARAM" \
         AssumeRoleExternalId="$ASSUME_ROLE_EXTERNAL_ID" \
-        BuildId="${NEW_VERSION}"
+        BuildId="${NEW_VERSION}" \
+        FunctionTimeout="${FUNCTION_TIMEOUT:-180}" \
+        WorkerGracefulShutdownSeconds="${WORKER_GRACEFUL_SHUTDOWN_SECONDS:-10}" \
+        WorkerShutdownDeadlineBufferSeconds="${WORKER_SHUTDOWN_DEADLINE_BUFFER_SECONDS:-15}"
 
 echo "${NEW_VERSION}" > VERSION
 echo "✓ VERSION updated to ${NEW_VERSION}"

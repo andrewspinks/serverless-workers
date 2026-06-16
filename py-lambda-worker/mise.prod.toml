@@ -10,3 +10,7 @@ TEMPORAL_NAMESPACE      = "aspinks-serverless.a2dd6"
 TEMPORAL_TASK_QUEUE     = "py-lambda-worker-queue"
 TEMPORAL_API_KEY_PARAM  = "/temporal/serverless/api-key"
 ASSUME_ROLE_EXTERNAL_ID = "py-lambda-worker-external-id"
+
+FUNCTION_TIMEOUT                        = "180"  # Lambda invocation deadline (s)
+WORKER_GRACEFUL_SHUTDOWN_SECONDS        = "10"   # worker stop timeout (graceful_shutdown_timeout)
+WORKER_SHUTDOWN_DEADLINE_BUFFER_SECONDS = "15"   # shutdown_deadline_buffer; work_time = timeout - this

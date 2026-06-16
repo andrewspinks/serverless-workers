@@ -11,3 +11,9 @@ TEMPORAL_NAMESPACE      = "sa-demo-01.temporal-dev"
 TEMPORAL_TASK_QUEUE     = "py-lambda-worker-queue-3"
 TEMPORAL_API_KEY_PARAM  = "/temporal/serverless/api-key"
 ASSUME_ROLE_EXTERNAL_ID = "python-external-id"
+
+# Long-running-activity tuning knobs (see .local/aitasks/.../plan.md). Picked up by deploy.sh
+# parameter overrides; change one and redeploy (then register-version + set-current).
+FUNCTION_TIMEOUT                        = "180"  # Lambda invocation deadline (s)
+WORKER_GRACEFUL_SHUTDOWN_SECONDS        = "10"   # worker stop timeout (graceful_shutdown_timeout)
+WORKER_SHUTDOWN_DEADLINE_BUFFER_SECONDS = "15"   # shutdown_deadline_buffer; work_time = timeout - this

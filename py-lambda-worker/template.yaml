@@ -4,12 +4,27 @@ Description: Temporal Lambda Worker (Python)
 
 Globals:
   Function:
-    Timeout: 60
     MemorySize: 256
     Runtime: python3.12
     Architectures: [arm64]
 
 Parameters:
+  FunctionTimeout:
+    Type: Number
+    Default: 180
+    Description: Lambda invocation deadline (seconds). Must exceed longest activity runtime + WorkerShutdownDeadlineBufferSeconds.
+  WorkerGracefulShutdownSeconds:
+    Type: Number
+    Default: 10
+    Description: >
+      Worker stop timeout (graceful_shutdown_timeout): how long the worker drains in-flight
+      activities after polling stops. Read by app.handler.configure.
+  WorkerShutdownDeadlineBufferSeconds:
+    Type: Number
+    Default: 15
+    Description: >
+      Time reserved before the invocation deadline for drain + shutdown hooks
+      (shutdown_deadline_buffer). Must exceed WorkerGracefulShutdownSeconds + hook duration.
   TemporalAddress:
     Type: String
     Default: localhost:7233
@@ -69,6 +84,7 @@ Resources:
       Handler: app.handler.lambda_handler
       CodeUri: .
       Description: Temporal worker running on Lambda
+      Timeout: !Ref FunctionTimeout
       # AutoPublishAlias publishes an immutable Lambda version on each code/config change
       # and keeps the "current" alias pointing to it. The versioned ARN is what gets
       # registered with Temporal so each build_id maps to a pinned Lambda snapshot.
@@ -88,6 +104,8 @@ Resources:
           TEMPORAL_DEPLOYMENT_NAME: !Ref TemporalDeploymentName
           TEMPORAL_BUILD_ID: !Ref BuildId
           TEMPORAL_API_KEY_PARAM: !Ref TemporalApiKeyParam
+          WORKER_GRACEFUL_SHUTDOWN_SECONDS: !Ref WorkerGracefulShutdownSeconds
+          WORKER_SHUTDOWN_DEADLINE_BUFFER_SECONDS: !Ref WorkerShutdownDeadlineBufferSeconds
           OPENTELEMETRY_COLLECTOR_CONFIG_FILE: /var/task/otel-collector-config.yaml
     Metadata:
       BuildMethod: makefile
