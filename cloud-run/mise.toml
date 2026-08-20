@@ -1,0 +1,114 @@
+[tools]
+gcloud = "578.0.0"
+hadolint = "2.14.0"
+jq = "1.8.1"
+node = "22.22.0"
+pnpm = "10.29.3"
+shellcheck = "0.11.0"
+shfmt = "3.12.0"
+temporal = "1.29.3"
+terraform = "1.13.3"
+tflint = "0.61.0"
+
+[env]
+TEMPORAL_ADDRESS = "localhost:7233"
+TEMPORAL_NAMESPACE = "default"
+TEMPORAL_TASK_QUEUE = "cloud-run-worker"
+TEMPORAL_DEPLOYMENT_NAME = "cloud-run-worker"
+TEMPORAL_BUILD_ID = "local"
+TEMPORAL_USE_VERSIONING = "false"
+
+[tasks.install]
+description = "Install pinned JavaScript dependencies"
+run = "CI=true pnpm install --frozen-lockfile"
+
+[tasks.build]
+description = "Bundle Workflows and compile TypeScript"
+run = "pnpm run build"
+
+[tasks.typecheck]
+description = "Type-check TypeScript without emitting files"
+run = "pnpm run typecheck"
+
+[tasks.test]
+description = "Run unit tests"
+run = "pnpm test"
+
+[tasks."lint:ts"]
+description = "Lint TypeScript and JavaScript"
+run = "pnpm run lint:ts"
+
+[tasks."lint:format"]
+description = "Check formatting for supported source and config files"
+run = "pnpm run lint:format"
+
+[tasks."lint:shell"]
+description = "Lint and format-check shell scripts"
+run = "scripts/lint-shell.sh"
+
+[tasks."lint:terraform"]
+description = "Format, validate, and lint Terraform"
+run = "scripts/lint-terraform.sh"
+
+[tasks."lint:docker"]
+description = "Lint Dockerfiles"
+run = "hadolint Dockerfile"
+
+[tasks.lint]
+description = "Lint all application, script, container, and infrastructure code"
+depends = ["lint:ts", "lint:format", "lint:shell", "lint:terraform", "lint:docker"]
+
+[tasks.check]
+description = "Run all local quality gates"
+depends = ["lint", "typecheck", "test"]
+
+[tasks.worker]
+description = "Run the worker against the configured Temporal environment"
+run = "pnpm run worker"
+
+[tasks."start-workflow"]
+description = "Start GreetingWorkflow; pass a name after --"
+run = "pnpm run start-workflow --"
+
+[tasks."infra:bootstrap"]
+description = "Create the GCS state bucket: PROJECT BUCKET [REGION]"
+raw = true
+run = "scripts/bootstrap.sh"
+
+[tasks."infra:apply"]
+description = "Apply shared infrastructure and all retained Worker versions"
+raw = true
+run = "scripts/infra-apply.sh"
+
+[tasks."secret:set-api-key"]
+description = "Add a Temporal API key to Secret Manager, reading it from stdin"
+raw = true
+run = "scripts/set-api-key.sh"
+
+[tasks."release:build"]
+description = "Build and push an immutable Worker image: BUILD_ID"
+depends = ["check"]
+run = "scripts/build.sh"
+
+[tasks."release:deploy"]
+description = "Build, provision, connect, and promote a Worker version: BUILD_ID"
+depends = ["check"]
+raw = true
+run = "scripts/deploy.sh"
+
+[tasks."release:rollback"]
+description = "Make a retained Worker version current: BUILD_ID"
+run = "scripts/rollback.sh"
+
+[tasks."release:promote"]
+description = "Validate and promote an already connected Worker version: BUILD_ID"
+run = "scripts/promote.sh"
+
+[tasks."release:prune"]
+description = "Destroy a drained, inactive Worker pool: BUILD_ID"
+raw = true
+run = "scripts/prune.sh"
+
+[tasks.smoke]
+description = "Run a Workflow and verify its SDK metric: BUILD_ID [NAME]"
+run = "scripts/smoke.sh"

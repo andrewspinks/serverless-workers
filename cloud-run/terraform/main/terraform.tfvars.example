@@ -1,0 +1,19 @@
+project_id  = "my-gcp-project"
+region      = "us-central1"
+environment = "demo"
+name_prefix = "temporal-worker"
+
+temporal_address         = "my-namespace.account.tmprl.cloud:7233"
+temporal_namespace       = "my-namespace.account"
+temporal_task_queue      = "cloud-run-worker"
+temporal_deployment_name = "cloud-run-worker"
+
+deployer_principals = [
+  "user:developer@example.com",
+]
+
+# Copy the service account identities displayed by the Temporal Cloud GCP
+# compute-connection flow. These values are account-specific.
+temporal_impersonator_service_account_emails = [
+  "serverless-account-id@example-project.iam.gserviceaccount.com",
+]

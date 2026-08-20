@@ -1,0 +1,9 @@
+.git
+.gitignore
+.terraform
+dist
+node_modules
+README.md
+terraform
+telemetry
+*.tfstate*

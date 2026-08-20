@@ -1,0 +1,10 @@
+.gcloudignore
+.git
+.gitignore
+.releases/
+README.md
+dist/
+node_modules/
+telemetry/
+terraform/
+*.tfstate*

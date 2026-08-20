@@ -1,0 +1,17 @@
+.DS_Store
+.env
+.mise.local.toml
+mise.local.toml
+dist/
+node_modules/
+.releases/
+*.key
+*.pem
+*.tfplan
+*.tfstate
+*.tfstate.*
+*.tsbuildinfo
+terraform/**/.terraform/
+terraform/bootstrap/backend.auto.tfvars
+terraform/main/backend.hcl
+terraform/main/terraform.tfvars

@@ -1,0 +1,3 @@
+project_id        = "my-gcp-project"
+region            = "us-central1"
+state_bucket_name = "my-gcp-project-temporal-worker-tfstate"

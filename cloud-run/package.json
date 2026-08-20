@@ -1,0 +1,38 @@
+{
+  "name": "serverless/cloud-run-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "build:workflows": "node scripts/build-workflows.mjs",
+    "build": "pnpm run build:workflows && tsc --build",
+    "clean": "tsc --build --clean",
+    "typecheck": "tsc --noEmit",
+    "test": "pnpm run build && node --test 'dist/**/*.test.js'",
+    "lint:ts": "eslint . --max-warnings 0",
+    "lint:format": "prettier --check . --ignore-unknown",
+    "format": "prettier --write .",
+    "worker": "pnpm run build && node dist/worker.js",
+    "start-workflow": "pnpm run build && node dist/starter.js"
+  },
+  "dependencies": {
+    "@temporalio/activity": "~1.22.0",
+    "@temporalio/client": "~1.22.0",
+    "@temporalio/worker": "~1.22.0",
+    "@temporalio/workflow": "~1.22.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@tsconfig/node22": "^22.0.6",
+    "@types/node": "^22.19.0",
+    "eslint": "^9.39.2",
+    "globals": "^17.3.0",
+    "prettier": "^3.8.1",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.56.1"
+  },
+  "engines": {
+    "node": ">=22 <23"
+  },
+  "packageManager": "pnpm@10.29.3"
+}
